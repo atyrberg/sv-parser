@@ -300,6 +300,19 @@ macro_rules! unwrap_locate {
 mod test {
     use super::*;
     use std::collections::HashMap;
+    use std::env;
+
+    fn get_testcase(s: &str) -> String {
+        format!(
+            "{}/testcases/{}",
+            env::var("CARGO_MANIFEST_DIR").unwrap(),
+            s
+        )
+    }
+
+    fn get_include_path() -> String {
+        format!("{}/testcases", env::var("CARGO_MANIFEST_DIR").unwrap())
+    }
 
     #[test]
     fn test() {
@@ -350,5 +363,29 @@ endmodule"##;
         assert!(ret.is_err());
         let ret = parse_sv_str(src, &path, &defines, &[""], false, false);
         assert!(ret.is_ok());
+    }
+
+    #[test]
+    fn test_include_line_number() {
+        let ret = parse_sv(
+            get_testcase("test3.sv"),
+            &HashMap::new(),
+            &[get_include_path()],
+            false,
+            false,
+        );
+
+        assert!(ret.is_ok());
+
+        let (syntax_tree, _) = ret.unwrap();
+        let local_param = unwrap_node!(&syntax_tree, LocalParameterDeclaration).unwrap();
+        let local_param_locate = unwrap_locate!(local_param).unwrap();
+        assert_eq!(2, local_param_locate.line);
+        // Here I also would like to see that the node comes from the include file
+        // assert_eq!("test3.svh", local_param_locate.file);
+
+        let data_decl = unwrap_node!(&syntax_tree, DataDeclarationVariable).unwrap();
+        let data_decl_locate = unwrap_locate!(data_decl).unwrap();
+        assert_eq!(4, data_decl_locate.line);
     }
 }
